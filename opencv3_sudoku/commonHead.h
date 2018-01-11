@@ -12,8 +12,16 @@
 #include <opencv2/opencv.hpp>
 
 using namespace cv;
+using namespace std;
+
+//宏定义区
 
 
+//函数声明
+int videoCap(void);
+int imgChangeSave(void);
+int creatAlphaMat(Mat &mat);
+int creatSaveImg(void);
 
 
 
