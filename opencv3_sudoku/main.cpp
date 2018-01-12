@@ -14,25 +14,71 @@
 #define PIC_BABOON	"../picture/Baboon.jpg"
 
 
-#define WINDOWS_NAME "滑动条线性混合"
+#define WINDOWS_NAME "鼠标座标获取"
 
-const int g_nMaxAlphaValue = 100;
-int g_nAlphaValueSlide;
-double g_dAlphaValue;
-double g_dBetaValue;
+Rect gRect;
+bool gDrawingBox = false;
+RNG gRNG(12345);
+void drawRectangle(cv::Mat& img, cv::Rect box);
+void mouseHandle(int event, int x, int y, int flags, void* param);
 
-Mat g_dstImg;
-Mat g_srcImg1;
-Mat g_srcImg2;
 
-void on_Trackbar(int, void *)
+
+void mouseHandle(int event, int x, int y, int flags, void* param)
 {
-	g_dAlphaValue = (double)g_nAlphaValueSlide / g_nMaxAlphaValue;
-	g_dBetaValue = 1 - g_dAlphaValue;
+	Mat& Img = *(cv::Mat*)param;
+	switch (event)
+	{
+		//鼠标移动记录座标变化
+		case EVENT_MOUSEMOVE:
+		{
+			if (gDrawingBox)
+			{
+				gRect.width = x - gRect.x;
+				gRect.height = y - gRect.y;
+			}
+		}	break;
 
-	addWeighted(g_srcImg1, g_dAlphaValue, g_srcImg2, g_dBetaValue, 0.0, g_dstImg);
-	imshow(WINDOWS_NAME, g_dstImg);
+		//左键按下 记录起始点
+		case EVENT_LBUTTONDOWN:
+		{
+			gDrawingBox = true;
+			gRect = Rect(x, y, 0, 0);
+		} break;
+
+		//左键松开 画图
+		case EVENT_LBUTTONUP:
+		{
+			gDrawingBox = false;
+			if (gRect.width < 0)
+			{
+				gRect.x += gRect.width;
+				gRect.width *= -1;
+			}
+			if (gRect.height < 0)
+			{
+				gRect.y += gRect.height;
+				gRect.height *= -1;
+			}
+
+			drawRectangle(Img, gRect);
+
+		} break;
+
+		default:
+			break;
+	}
 }
+
+void drawRectangle(cv::Mat& img, cv::Rect box)
+{
+	rectangle(img, box.tl(), box.br(), Scalar(gRNG.uniform(0, 255), gRNG.uniform(0, 255), gRNG.uniform(0, 255)));
+}
+
+
+
+
+
 /*======================================================================
 	函数: main
 	功能: 主函数操作
@@ -51,39 +97,26 @@ int main()
 	//Mat srcImg = imread("../picture/Lena.jpg",CV_LOAD_IMAGE_ANYCOLOR);
 	//imshow("原始图像",srcImg);
 
-	g_srcImg1 = imread(PIC_LENA);
-	g_srcImg2 = imread(PIC_AIRPLANE);
+	gRect = Rect(-1, -1, 0, 0);
+	Mat srcImg(600, 800, CV_8UC3), tmpImg;
+	srcImg.copyTo(tmpImg);
+	srcImg = Scalar::all(0);
 
-	g_nAlphaValueSlide = 30;
+	namedWindow(WINDOWS_NAME);
+	setMouseCallback(WINDOWS_NAME, mouseHandle, (void*)&srcImg);
 
-	namedWindow(WINDOWS_NAME, 1);
+	while (1)
+	{
+		srcImg.copyTo(tmpImg);
+		if (gDrawingBox)
+			drawRectangle(tmpImg, gRect);
+		imshow(WINDOWS_NAME, tmpImg);
+		if (waitKey(10) == 27) break;
+	}
 
-	char TrackbarName[50];
-	sprintf(TrackbarName, "透明值: %d", g_nMaxAlphaValue);
-
-	createTrackbar(TrackbarName, WINDOWS_NAME, &g_nAlphaValueSlide, g_nMaxAlphaValue, on_Trackbar);
-
-	on_Trackbar(g_nAlphaValueSlide, 0);
-	imwrite("pic/04_lena_airplane.png", g_dstImg);
-
-
-
-
-
-
-
-	waitKey(0);
-
-
-
-
-
-
-
-
-
-
-
-
+	imwrite("pic/05_mouseBox.png", tmpImg);
 	return 0;
+
+
 }
+
