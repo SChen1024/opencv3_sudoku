@@ -1,49 +1,47 @@
 /********************************************************************
-	文件: function.cpp
-	功能: 实现基本函数操作
-	备注:	20180111  设立文件
-			20180111 videoCap函数	
-
+文件: function.cpp
+功能: 实现基本函数操作
+备注:	20180111  设立文件
+20180111 videoCap函数
 **********************************************************************/
 
 #include "commonHead.h"
 /*
-	函数: videoCap
-	功能: 实现摄像头抓取图像并做简单处理]
-	输入: 无
-	输出: 0
-	备注: 无
-
+函数: videoCap
+功能: 实现摄像头抓取图像并做简单处理]
+输入: 无
+输出: 0
+备注: 无
 */
 int videoCap(void)
 {
-		//读入摄像头内容
+	//读入摄像头内容
 	VideoCapture capture(1);
 
 	//灰度图,黑白图,边界图
 	Mat grayFrame, binFrame, edgeFrame;
 
 	//循环显示
-	while(1)
-	{ 
-			Mat srcFrame;
-			capture >> srcFrame;
+	while (1)
+	{
+		Mat srcFrame;
+		capture >> srcFrame;
 
-			//转换为灰度图
-			cvtColor(srcFrame, grayFrame, CV_BGR2GRAY);
-			//转换为黑白图
-			threshold(grayFrame, binFrame, 128, 255, CV_THRESH_OTSU);
-			//模糊化
-			blur(grayFrame, grayFrame, Size(3, 3));
-			//转换为边界图
-			Canny(grayFrame, edgeFrame, 0, 30, 3);
-			
-			imshow("srcFrame", srcFrame);
-			imshow("grayFrame", grayFrame);
-			imshow("binFrame", binFrame);
-			imshow("edgeFrame", edgeFrame);
+		//转换为灰度图
+		cvtColor(srcFrame, grayFrame, CV_BGR2GRAY);
+		//转换为黑白图
+		threshold(grayFrame, binFrame, 128, 255, CV_THRESH_OTSU);
+		//模糊化
+		blur(grayFrame, grayFrame, Size(3, 3));
+		//转换为边界图
+		Canny(grayFrame, edgeFrame, 0, 30, 3);
 
-			waitKey(30);
+		imshow("srcFrame", srcFrame);
+		imshow("grayFrame", grayFrame);
+		imshow("binFrame", binFrame);
+		imshow("edgeFrame", edgeFrame);
+
+		waitKey(30);
 	}
 	capture.release();
 	destroyAllWindows();
@@ -53,12 +51,11 @@ int videoCap(void)
 }
 
 /*
-	函数: imgChangeSave
-	功能: 实现读取图片做简单处理之后储存下来.
-	输入: 无
-	输出: 0
-	备注: 无
-
+函数: imgChangeSave
+功能: 实现读取图片做简单处理之后储存下来.
+输入: 无
+输出: 0
+备注: 无
 */
 
 int imgChangeSave(void)
@@ -77,11 +74,11 @@ int imgChangeSave(void)
 }
 
 /*
-	函数: imgChangeSave
-	功能: 实现读取图片做简单处理之后储存下来.
-	输入: 无
-	输出: 0
-	备注: 无
+函数: imgChangeSave
+功能: 实现读取图片做简单处理之后储存下来.
+输入: 无
+输出: 0
+备注: 无
 */
 int creatAlphaMat(Mat &mat)
 {
@@ -93,7 +90,7 @@ int creatAlphaMat(Mat &mat)
 			rgba[0] = UCHAR_MAX;
 			rgba[1] = saturate_cast<uchar>((float(mat.cols - j)) / ((float)mat.cols)*UCHAR_MAX);
 			rgba[2] = saturate_cast<uchar>((float(mat.rows - i)) / ((float)mat.rows)*UCHAR_MAX);
-			rgba[3] = saturate_cast<uchar>(0.5 * (rgba[1]+rgba[2]));
+			rgba[3] = saturate_cast<uchar>(0.5 * (rgba[1] + rgba[2]));
 		}
 	}
 	return 0;
@@ -119,14 +116,6 @@ int creatSaveImg(void)
 	}
 	return 0;
 }
-
-
-
-
-
-
-
-
 
 
 

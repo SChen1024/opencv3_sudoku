@@ -1,8 +1,7 @@
 /********************************************************************
-	文件: main.cpp
-	功能: 主函数操作
-	备注: 20180111 陈栓 设立文件
-
+文件: main.cpp
+功能: 主函数操作
+备注: 20180111 陈栓 设立文件
 ***********************************************************************/
 
 #include "commonHead.h"
@@ -30,43 +29,43 @@ void mouseHandle(int event, int x, int y, int flags, void* param)
 	switch (event)
 	{
 		//鼠标移动记录座标变化
-		case EVENT_MOUSEMOVE:
+	case EVENT_MOUSEMOVE:
+	{
+		if (gDrawingBox)
 		{
-			if (gDrawingBox)
-			{
-				gRect.width = x - gRect.x;
-				gRect.height = y - gRect.y;
-			}
-		}	break;
+			gRect.width = x - gRect.x;
+			gRect.height = y - gRect.y;
+		}
+	}	break;
 
-		//左键按下 记录起始点
-		case EVENT_LBUTTONDOWN:
+	//左键按下 记录起始点
+	case EVENT_LBUTTONDOWN:
+	{
+		gDrawingBox = true;
+		gRect = Rect(x, y, 0, 0);
+	} break;
+
+	//左键松开 画图
+	case EVENT_LBUTTONUP:
+	{
+		gDrawingBox = false;
+		if (gRect.width < 0)
 		{
-			gDrawingBox = true;
-			gRect = Rect(x, y, 0, 0);
-		} break;
-
-		//左键松开 画图
-		case EVENT_LBUTTONUP:
+			gRect.x += gRect.width;
+			gRect.width *= -1;
+		}
+		if (gRect.height < 0)
 		{
-			gDrawingBox = false;
-			if (gRect.width < 0)
-			{
-				gRect.x += gRect.width;
-				gRect.width *= -1;
-			}
-			if (gRect.height < 0)
-			{
-				gRect.y += gRect.height;
-				gRect.height *= -1;
-			}
+			gRect.y += gRect.height;
+			gRect.height *= -1;
+		}
 
-			drawRectangle(Img, gRect);
+		drawRectangle(Img, gRect);
 
-		} break;
+	} break;
 
-		default:
-			break;
+	default:
+		break;
 	}
 }
 
@@ -80,12 +79,11 @@ void drawRectangle(cv::Mat& img, cv::Rect box)
 
 
 /*======================================================================
-	函数: main
-	功能: 主函数操作
-	输入: 无
-	输出: 0
-	备注: 无
-
+函数: main
+功能: 主函数操作
+输入: 无
+输出: 0
+备注: 无
 ======================================================================*/
 int main()
 {
@@ -119,4 +117,3 @@ int main()
 
 
 }
-
