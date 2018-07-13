@@ -11,8 +11,8 @@
 
 #define TESTCYLINDER    0   //测试杆面图像
     #define CFace1  "Pic\\CylinderFace1.bmp"
-    #define EFace1  "Pic\\E\\CFace1.bmp"  
-    #define ERESULT  "Pic\\E\\res_CFace1.png"
+    #define EFace0  "Pic\\E\\CFace0.bmp"  
+    #define ERESULT  "Pic\\E\\res_CFace0.png"
 
 
 #define TESTBFACE       0   //测试大端面图像
@@ -20,11 +20,15 @@
     #define BigFace2 "Pic\\BigFace2.bmp"
 
 
-#define TESTRFACE       1   //R面 弧面 锥面测试
-    #define RFace1  "Pic\\RFace1.bmp"   
-    #define RFace2  "Pic\\RFace2.bmp"  
-    #define RFace0  "Pic\\Pick\\R\\074-3.bmp"  
+#define TESTRFACE       0   //R面 弧面 锥面测试
+    #define RFace1  "Pic\\R\\RFace1.bmp"   
+    #define RFace2  "Pic\\R\\RFace2.bmp"  
+    #define RFace0  "Pic\\R\\RFace0.bmp"  
     #define RESULT  "Pic\\Pick\\R\\res074-3.png"
+
+#define TEST        1    //测试算法通道
+
+
 
 
     const char *RFaceWindowsName = "测试图像显示窗口";
@@ -34,10 +38,30 @@
 
     using namespace cv;
 
+
+
+
+    Vec3b RandomColor(int value)//生成随机颜色函数
+    {
+        value = value % 255;  //生成0~255的随机数  
+        RNG rng;
+        int aa = rng.uniform(0, value);
+        int bb = rng.uniform(0, value);
+        int cc = rng.uniform(0, value);
+        return Vec3b(aa, bb, cc);
+    }
+
+
+
+
+
+
+
+
 int  main(void)
 {
 #if TESTCYLINDER
-    Mat srcImg = imread(EFace0);
+    Mat srcImg = imread(EFace1);
     //载入后先显示
     //namedWindow("src");
     //imshow("src", srcImg);
@@ -89,8 +113,8 @@ int  main(void)
     Mat srcRImg = imread(EFace1);
 
     //将图像纵向拉伸
-    Mat transImg;
-    //resize(srcRImg, transImg, Size(srcRImg.cols, srcRImg.rows * 4), 0, 0, INTER_LINEAR);
+    Mat transImg=srcRImg.clone();
+    resize(srcRImg, transImg, Size(srcRImg.cols, srcRImg.rows * 4), 0, 0, INTER_LINEAR);
 
     Mat cannyImg,dstImg;
 
@@ -133,6 +157,124 @@ int  main(void)
     //namedWindow(RFaceWindowsName, CV_WINDOW_AUTOSIZE);
     //imshow(RFaceWindowsName, dstImg);
     imwrite(RESULT, dstImg);
+    //imwrite("Pic\\test\\canny_img.png", cannyImg);
+
+    waitKey(0);
+
+
+#endif
+
+
+#if TEST
+
+
+    Mat srcRImg = imread(RFace1);
+
+    //将图像纵向拉伸
+    Mat transImg = srcRImg.clone();
+    //resize(srcRImg, transImg, Size(srcRImg.cols, srcRImg.rows * 4), 0, 0, INTER_LINEAR);
+
+    Mat grayImg,edgeImg,cannyImg, dstImg;
+
+    AreaRDiv ard;
+    //ard.preProc(transImg, cannyImg);
+    cvtColor(transImg, grayImg,CV_BGR2GRAY);
+    //GaussianBlur(grayImg, grayImg, Size(3,3), 0);
+
+
+    grayImg.convertTo(grayImg, CV_32F);
+    //Sobel(grayImg, grayImg, CV_8U, 1,0);
+    Sobel(grayImg, grayImg, CV_32F, 0, 1);
+    convertScaleAbs(grayImg, dstImg);
+
+
+
+    /////////////////////////////////////////////////////////
+
+    threshold(grayImg,edgeImg,0,255,CV_THRESH_OTSU);
+    //bitwise_not(edgeImg, edgeImg);
+
+    Mat kernel = getStructuringElement(MORPH_RECT, Size(3,3));
+
+    //膨胀之后得到背景
+    Mat sur_bg, sur_fr;
+    //Mat dilateImg=edgeImg.clone();
+
+    dilate(edgeImg, sur_bg, kernel, Point(-1,-1),3);
+
+
+    Mat distImg;
+    distanceTransform(edgeImg, distImg,DIST_L1, 3);
+
+    distImg.convertTo(distImg, CV_8U);
+
+    threshold(distImg,sur_fr, 0, 255, CV_THRESH_BINARY);
+
+    Mat unknownImg;
+    subtract(sur_bg, sur_fr, unknownImg);
+
+    Mat markers(unknownImg.size(),CV_8UC1);
+
+    connectedComponents(sur_fr, markers);
+
+    markers = markers + 1;
+
+    //markers[unknownImg == 255] = 0;
+
+    for (int  i = 0;i < unknownImg.rows;i++)
+    {
+        unsigned char *data = unknownImg.ptr<unsigned char>(i);
+        int *dataM = markers.ptr< int>(i);
+        for (int  j = 0;j < unknownImg.cols;j++)
+        {
+            if (data[j] == 255)
+            {
+                dataM[j] = 0;
+            }
+        }
+    }
+    watershed(srcRImg, markers);
+    //markers.convertTo(markers, CV_8U);
+
+
+
+    for (auto i = 0;i < markers.rows;i++)
+    {
+        unsigned char *data = markers.ptr< unsigned char>(i);
+        //unsigned char *dataM = grayImg.ptr<unsigned char>(i);
+        for (auto j = 0;j < markers.cols;j++)
+        {
+            if (data[j] == -1)
+            {
+                //dataM[j] =255;
+                srcRImg.at<cv::Vec3b>(j, i) = { 0,0,255 };
+            }
+        }
+    }
+
+
+
+
+
+
+    //add(sur_bg,Mat::all(1),)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    //namedWindow(RFaceWindowsName, CV_WINDOW_AUTOSIZE);
+    //imshow(RFaceWindowsName, dstImg);
+    //imwrite(RESULT, dstImg);
     //imwrite("Pic\\test\\canny_img.png", cannyImg);
 
     waitKey(0);

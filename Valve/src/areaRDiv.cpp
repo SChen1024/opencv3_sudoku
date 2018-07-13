@@ -155,7 +155,6 @@ void AreaRDiv::drawScars(const cv::Mat &img, const std::vector<std::vector<cv::P
 std::vector<std::vector<Point>> contours;
 std::vector<Vec4i> hierarchy;
 
-RNG rng(12345);
 
 void AreaRDiv::detectScars(const cv::Mat &img, std::vector<std::vector<cv::Point>> &scars, const std::vector<AreaRDiv::Line> &lines)const
 {
