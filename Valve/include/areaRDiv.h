@@ -21,10 +21,11 @@ public:
 
     class Scar
     {
-        cv::Point p;  //缺陷中心点
+        //Point center;  //缺陷中心点
         double area; //缺陷面积
-
-
+        double width;
+        double height;
+        double acc = height / width;
     };
 
 
@@ -41,9 +42,12 @@ public:
 
 
 
-    void drawScars(const cv::Mat &img, const std::vector<std::vector<cv::Point>> &scars)const;
-    void detectScars(const cv::Mat &, std::vector<std::vector<cv::Point>> &, const std::vector<AreaDivider::Line> &)const;
-    void filterScars(const cv::Mat &, const std::vector<std::vector<cv::Point>> &, std::vector<std::vector<cv::Point>> &, const std::vector<AreaDivider::Line> &)const;
+    void drawScars(const cv::Mat &img, const std::vector<std::vector<cv::Point>> &scars, cv::Mat &img_out);
+
+    void detectScars(const cv::Mat &img, std::vector<std::vector<cv::Point>> &scars, const std::vector<AreaRDiv::Line> &lines)const;
+
+
+    void filterScars(const cv::Mat &, const std::vector<std::vector<cv::Point>> &, std::vector<std::vector<cv::Point>> &, const std::vector<AreaRDiv::Line> &)const;
 
 
 };

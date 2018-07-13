@@ -15,7 +15,7 @@ void ScarDetector::showScars(const cv::Mat &img, const std::vector<std::vector<c
 	//cv::imwrite("scar.png", rgb_img);
 
 	resize(rgb_img, rgb_img, cv::Size(rgb_img.cols / 2, rgb_img.rows / 2));
-	cv::imshow("Scar", rgb_img);
+	//cv::imshow("Scar", rgb_img);
 }
 
 
@@ -84,7 +84,7 @@ void ScarDetector::filterScars(const cv::Mat &img, const std::vector<std::vector
 			back_up.push_back(contour);
 	}
 
-    //设置全黑的图  绘出边缘
+    //设置掩码图  绘出边缘
 	cv::Mat mask_img(cv::Size(img.cols, img.rows), CV_8UC1);
 	for (int i = 0; i < mask_img.rows; ++i)
 	{
@@ -127,7 +127,7 @@ void ScarDetector::filterScars(const cv::Mat &img, const std::vector<std::vector
 			if (!(contourIsEdge(block, *i, cv::Point(min_x, min_y)) && (max_x - min_x) / double(max_y - min_y+0.000000000001) < 0.5))
 				contours_filtered_.push_back(*i);
 		}
-		else
+		
 			contours_filtered_.push_back(*i);
 	}
 
@@ -161,6 +161,7 @@ bool ScarDetector::contourIsEdge(const cv::Mat &img, const std::vector<cv::Point
 	cv::Mat img_ = img.clone();
 	cv::medianBlur(img_, img_, 3);
 
+    //将所有轮廓线标记为黑色
 	for (auto i = contour.cbegin(); i != contour.cend(); ++i)
 		img_.at<unsigned char>(i->y - pt.y, i->x - pt.x) = 0;
 
@@ -172,8 +173,10 @@ bool ScarDetector::contourIsEdge(const cv::Mat &img, const std::vector<cv::Point
 		bool left = true;
 		for (int j = 0; j < img_.cols; ++j)
 		{
+            //从做往右依次查找到不是黑色的点
 			if (data[j] == 0)
 			{
+
 				left = false;
 				continue;
 			}

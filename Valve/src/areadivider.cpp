@@ -55,7 +55,7 @@ void AreaDivider::detectLines(const cv::Mat &img, std::vector<Line> &lines,doubl
 		for (auto j = 0; j < img_gray.rows; ++j)
 			c = img_gray.at<unsigned char>(j, i) == 255 ? c + 1 : c;
 
-		if (c > 300)
+		if (c > 400)
 			lines.push_back({ i,c / double(img_gray.rows),true });
 	}
 }
@@ -111,7 +111,7 @@ bool AreaDivider::filterLines(const std::vector<Line> &lines_in, std::vector<Lin
 	{
 		if (it == lines.cend() - 1)
 			return false;
-		if (fabs(it->l - (lines_out.cend() - 1)->l - (scales[3] - scales[2]) * width) < 4)
+		if (fabs(it->l - (lines_out.cend() - 1)->l - (scales[3] - scales[2]) * width) < 6)
 		{
 			lines_out.push_back(*it);
 			++it;
