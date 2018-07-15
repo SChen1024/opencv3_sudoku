@@ -10,7 +10,7 @@
 
 
 #define TESTCYLINDER    0   //测试杆面图像
-    #define CFace1  "Pic\\CylinderFace1.bmp"
+    #define EFace1  "Pic\\E\\CFace1.bmp"
     #define EFace0  "Pic\\E\\CFace0.bmp"  
     #define ERESULT  "Pic\\E\\res_CFace0.png"
 
@@ -26,40 +26,72 @@
     #define RFace0  "Pic\\R\\RFace0.bmp"  
     #define RESULT  "Pic\\Pick\\R\\res074-3.png"
 
+
+#define TESTWATERSHED 0  //测试watershed 算法
+#define TESTDIVIMG    0  //测试切割图像
+#define TESTRDIV      0   // 测试R面分割算法
 #define TEST        1    //测试算法通道
 
-
-
-
-    const char *RFaceWindowsName = "测试图像显示窗口";
+const char *RFaceWindowsName = "测试图像显示窗口";
    
-    #define MaxWidth 430    //表示当前可见的窗口能够看到的图像最大值，
+#define MaxWidth 430    //表示当前可见的窗口能够看到的图像最大值，
                             //根据当前图像进行适当调整
 
-    using namespace cv;
+//气门尺寸定义
+//气门总长度103mm 
+//从小端面开始 G区15mm  F区15mm E区大概45mm 大端面直径28mm 小端面直径6mm
+//G区锁夹槽 G2 总宽5.2mm 左侧G1 4.9mm 右侧G3 4.9mm
+//最左侧B区1mm 大概锁夹槽宽度3x1.15+2x0.9；
+const int MaxLongmm = 103;
+const int GLongmm = 15;
+const int FLongmm = 15; 
+const int ELongmm = 44;  //大概
 
 
 
 
-    Vec3b RandomColor(int value)//生成随机颜色函数
-    {
-        value = value % 255;  //生成0~255的随机数  
-        RNG rng;
-        int aa = rng.uniform(0, value);
-        int bb = rng.uniform(0, value);
-        int cc = rng.uniform(0, value);
-        return Vec3b(aa, bb, cc);
-    }
+//暂时只加入 柱面处
+vector<double> borderScales = { 
+    0,
+    0.0080, //BC 分界线比例
+    0.09,   //D1 D2 分界线
+    0.2816, //D2 E分界线
+    0.7087, //E F 分界线
+    0.8543, //FG 分界线
+    1 };
 
 
+//暂时只加入 弧面处
+vector<double> RborderScales = {
+    0,
+    0.1308, //C D1 分界线比例
+    0.3692,   //D1 D0 分界线
+    0.6028, //D0 D2
+    1 };    //D2 E分界线 
 
 
+void testFunction( Mat &srcImg, Mat &dstImg, vector<double> &borderScales )
+{
 
 
+}
+
+//快排函数
+int comP( const void *a, const void *b )
+{
+    return ( *(int *) a - *(int *) b );
+}
 
 
 int  main(void)
 {
+    //开始计时
+    clock_t start, finish;
+    double totaltime;
+    start = clock();
+
+
+
 #if TESTCYLINDER
     Mat srcImg = imread(EFace1);
     //载入后先显示
@@ -165,123 +197,364 @@ int  main(void)
 #endif
 
 
-#if TEST
+#if TESTWATERSHED
 
+    Mat srcRImg = imread(EFace0);
 
-    Mat srcRImg = imread(RFace1);
+    WaterShedProc ws;
+    Mat markers;
+    ws.process( srcRImg, markers );
 
-    //将图像纵向拉伸
-    Mat transImg = srcRImg.clone();
-    //resize(srcRImg, transImg, Size(srcRImg.cols, srcRImg.rows * 4), 0, 0, INTER_LINEAR);
+    Mat dstImg = srcRImg.clone();
+    ws.drawMarkersLine( dstImg, markers );
 
-    Mat grayImg,edgeImg,cannyImg, dstImg;
-
-    AreaRDiv ard;
-    //ard.preProc(transImg, cannyImg);
-    cvtColor(transImg, grayImg,CV_BGR2GRAY);
-    //GaussianBlur(grayImg, grayImg, Size(3,3), 0);
-
-
-    grayImg.convertTo(grayImg, CV_32F);
-    //Sobel(grayImg, grayImg, CV_8U, 1,0);
-    Sobel(grayImg, grayImg, CV_32F, 0, 1);
-    convertScaleAbs(grayImg, dstImg);
-
-
-
-    /////////////////////////////////////////////////////////
-
-    threshold(grayImg,edgeImg,0,255,CV_THRESH_OTSU);
-    //bitwise_not(edgeImg, edgeImg);
-
-    Mat kernel = getStructuringElement(MORPH_RECT, Size(3,3));
-
-    //膨胀之后得到背景
-    Mat sur_bg, sur_fr;
-    //Mat dilateImg=edgeImg.clone();
-
-    dilate(edgeImg, sur_bg, kernel, Point(-1,-1),3);
-
-
-    Mat distImg;
-    distanceTransform(edgeImg, distImg,DIST_L1, 3);
-
-    distImg.convertTo(distImg, CV_8U);
-
-    threshold(distImg,sur_fr, 0, 255, CV_THRESH_BINARY);
-
-    Mat unknownImg;
-    subtract(sur_bg, sur_fr, unknownImg);
-
-    Mat markers(unknownImg.size(),CV_8UC1);
-
-    connectedComponents(sur_fr, markers);
-
-    markers = markers + 1;
-
-    //markers[unknownImg == 255] = 0;
-
-    for (int  i = 0;i < unknownImg.rows;i++)
-    {
-        unsigned char *data = unknownImg.ptr<unsigned char>(i);
-        int *dataM = markers.ptr< int>(i);
-        for (int  j = 0;j < unknownImg.cols;j++)
-        {
-            if (data[j] == 255)
-            {
-                dataM[j] = 0;
-            }
-        }
-    }
-    watershed(srcRImg, markers);
-    //markers.convertTo(markers, CV_8U);
-
-
-
-    for (auto i = 0;i < markers.rows;i++)
-    {
-        unsigned char *data = markers.ptr< unsigned char>(i);
-        //unsigned char *dataM = grayImg.ptr<unsigned char>(i);
-        for (auto j = 0;j < markers.cols;j++)
-        {
-            if (data[j] == -1)
-            {
-                //dataM[j] =255;
-                srcRImg.at<cv::Vec3b>(j, i) = { 0,0,255 };
-            }
-        }
-    }
-
-
-
-
-
-
-    //add(sur_bg,Mat::all(1),)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    //namedWindow(RFaceWindowsName, CV_WINDOW_AUTOSIZE);
-    //imshow(RFaceWindowsName, dstImg);
-    //imwrite(RESULT, dstImg);
-    //imwrite("Pic\\test\\canny_img.png", cannyImg);
-
-    waitKey(0);
+    waitKey( 0 );
 
 
 #endif
 
+
+
+#if TESTDIVIMG
+
+
+
+
+    AreaRDiv ard;
+    String path = "Pic\\TestPic\\E\\";
+    
+    vector<string> files;
+    vector<string> files_res;
+
+    listFiles( path.c_str(), files );
+
+    string suffix_ = "png";
+    Mat dstImg;
+    for (int i=0;i<files.size();i++)
+    {
+
+        cout << files[i] << endl;
+
+
+
+        auto name_iter = std::find( files[i].crbegin(), files[i].crend(), '.' );
+        std::string name = std::string( files[i].cbegin(), name_iter.base() );
+        name += suffix_;
+        //name = path + name;
+
+        files_res.push_back(name);
+
+        //cout << files_res[i] << endl;
+
+        Mat srcRImg = imread( files[i] );
+
+        ard.divideImg( srcRImg ,dstImg,borderScales);
+
+        imwrite( name, dstImg );
+
+    }
+
+    cout<<"总计"<< files.size() <<"图片" << endl;
+
+
+
+
+
+
+
+
+#endif
+
+
+
+#if TESTRDIV
+
+    AreaRDiv ard;
+    std::string path = "Pic\\TestPic\\R";
+    std::string respath = "Pic\\TestPic\\res";
+
+    vector<string> files;
+    vector<string> files_res;
+
+    listFiles( path.c_str(), files );
+
+    Mat dstImg;
+    for (int i = 0;i<files.size();i++)
+    {
+
+        cout << files[i] << endl;
+
+        string  newfile;
+        renameFiles( files[i], newfile, respath );
+        
+        files_res.push_back( newfile );
+
+        cout << files_res[i] << endl;
+
+        Mat srcRImg = imread( files[i] );
+
+        ard.RdivideImg( srcRImg, dstImg, RborderScales );
+
+        imwrite( newfile, dstImg );
+
+    }
+
+    cout << "总计" << files.size() << "图片" << endl;
+
+
+
+
+
+#endif
+
+#if TEST
+
+#define AREAB   0    //B
+#define AREAD2  1    //D2
+#define AREAG   0    //G
+
+    
+    Mat srcRImg = imread( EFace0 );
+    vector<Mat> cellImg;
+    vector<AreaRDiv::Line> borderlines;
+    Mat dstImg;
+
+    AreaRDiv ard;
+    ard.divideImg( srcRImg, dstImg, borderScales, borderlines );
+
+    cutImage( srcRImg, borderlines, cellImg );
+
+    //获取到各区域的图片
+    //Mat AreaBImg, AreaD2Img, AreaEImg, AreaFImg, AreaGImg;
+    //AreaBImg = cellImg[0];
+    //AreaD2Img = cellImg[2];
+    //AreaEImg = cellImg[3];
+    //AreaFImg = cellImg[4];
+    //AreaGImg = cellImg[5];
+
+    //确定准确的边缘位置
+    vector<AreaRDiv::Line> realLines;
+
+
+#if AREAB
+    /*==========================================================================*/
+    /*        B区域处理方法***/
+    
+    
+    Mat AreaBImg = cellImg[0];
+    Mat grayBImg, edgeBImg, cannyBImg, dstBImg;
+
+    cvtColor( AreaBImg, grayBImg, CV_BGR2GRAY );
+    threshold( grayBImg, edgeBImg, 0, 255, CV_THRESH_OTSU );
+    Canny( edgeBImg, cannyBImg, 30, 80, 3 );
+
+    //对得到的两条轮廓统计横座标值，确定轮廓位置
+
+    int line_l = 0, line_l_max = 0;
+    int line_r = cannyBImg.cols, line_r_max = 0;
+    for (int i = 5; i < 12; i++)
+    {
+        float avgl = 0,avgr=0;
+        for (int j = 0;j < cannyBImg.rows;j++)
+        {
+            avgl += (float)cannyBImg.at<uchar>( j, i ) / cannyBImg.rows;
+            avgr += (float) cannyBImg.at<uchar>( j, cannyBImg.cols-i ) / cannyBImg.rows;
+        }
+        //将canny左右座标作为最终座标确定
+        if ((int) avgl > line_l_max)
+        {
+            line_l = i;
+            line_l_max = avgl;
+        }
+
+        if ((int) avgr > line_r_max)
+        {
+            line_r = cannyBImg.cols - i;
+            line_r_max = avgr;
+        }
+    }
+
+    //确定真的边缘位置   最左侧两条线
+    realLines.push_back( { borderlines[0].l - 5 + line_l ,1,false } );
+    realLines.push_back( { borderlines[0].l - 5 + line_r ,1,false } );
+
+    // B区处理结束
+    //------------------------------------------------------------
+#endif
+
+
+
+
+#if AREAD2
+    //==============================================================
+    //D2区域处理开始
+    Mat AreaD2Img = cellImg[0];
+    Mat grayD2Img, edgeD2Img, cannyD2Img, dstD2Img;
+
+    cvtColor( AreaD2Img, grayD2Img, CV_BGR2GRAY );
+    threshold( grayD2Img, edgeD2Img, 0, 255, CV_THRESH_OTSU );
+    Canny( edgeD2Img, cannyD2Img, 30, 80, 3 );
+
+
+    //D2区域结束
+    //=================================================================
+    //D区分界线
+    realLines.push_back( { borderlines[2].l  ,3,false } );
+
+    //DE 分界线
+    realLines.push_back( { borderlines[3].l  ,2,false } );
+
+    //EF 分界线
+    realLines.push_back( { borderlines[4].l  ,2,false } );
+
+    //FG 分界线
+    realLines.push_back( { borderlines[5].l  ,2,false } );
+
+
+    ////绘制出来原始裁剪边线
+    //dstBImg = cannyBImg.clone();
+    //line( dstBImg, Point( 5, 0 ), Point( 5, dstBImg.rows - 1 ),Scalar(128));
+    //line( dstBImg, Point( dstBImg.cols-6, 0 ), Point( dstBImg.cols - 6, dstBImg.rows - 1 ), Scalar( 128 ) );
+ 
+
+#endif 
+
+#if AREAG
+    //---- G 区域处理方案------------------------------------------
+
+
+    Mat AreaGImg = cellImg[5];
+    Mat grayGImg, edgeGImg, cannyGImg, dstGImg;
+
+    cvtColor( AreaGImg, grayGImg, CV_BGR2GRAY );
+    threshold( grayGImg, edgeGImg, 0, 255, CV_THRESH_OTSU );
+    Canny( edgeGImg, cannyGImg, 30, 100, 3 );
+
+    ////对得到的两条轮廓统计横座标值，确定轮廓位置
+    ////缩小计算长度  可以
+    //vector<int> avgX;
+    //for (int i = 0; i <cannyGImg.cols; i++)
+    //{
+    //    float avg=0;
+    //    for (int j = 0;j < cannyGImg.rows;j++)
+    //    {
+    //        avg += (float) cannyGImg.at<uchar>( j, i ) / cannyGImg.rows;
+    //    }
+    //    avgX.push_back((int)avg );
+    //}
+    //
+    ////取出适宜长度的内容  80-200   得到的位置是乱序的不影响使用
+    //vector<int> avgXl;
+    //avgXl.insert( avgXl.begin(), avgX.begin() + 80, avgX.begin() + 200 );
+    //int pos[7];
+    //for (int i = 0;i < 6;i++)
+    //{
+    //    auto maxl = max_element( avgXl.begin(),avgXl.end() );
+    //    pos[i] = distance( avgXl.begin(), maxl );
+    //    avgXl[pos[i]] = 0;              //置零      
+    //    pos[i] += 80;
+    //}
+    //
+    ////末尾最后一个边界值
+    //vector<int> avgXr;
+    //avgXr.insert( avgXr.begin(), avgX.begin() + 270, avgX.end() );
+    //auto maxr = max_element( avgXr.begin(), avgXr.end() );
+    //pos[6] = distance( avgXr.begin(), maxr );
+    //pos[6] += 270;
+
+    //qsort( pos, 7, sizeof( pos[0] ), comP );
+
+
+    std::vector<AreaRDiv::Line> lines;
+    //对于得到边缘的图像的每一列进行计数， 当一列的白色点数目大于300时便认为检测到直线
+    for (auto i = 0; i < cannyGImg.cols; ++i)
+    {
+        int c = 0;
+        for (auto j = 0; j < cannyGImg.rows; ++j)
+            c = ( cannyGImg.at<unsigned char>( j, i ) == 255 ) ? c + 1 : c;
+
+        //d对于大于300个白点的列进行 加入line中
+        if (c > 400)
+            lines.push_back( { i,c / double( cannyGImg.rows ),true } );
+    }
+
+    if (lines.size() < 7) return false;
+
+    for (int i = 0; i < lines.size() - 1; )
+    {
+        if (fabs( lines[i].l - lines[i + 1].l ) < 5)
+        {
+            if (lines[i].acc >= lines[i + 1].acc)
+                lines.erase( lines.cbegin() + i + 1 );
+            else
+                lines.erase( lines.cbegin() + i );
+        }
+        else
+            ++i;
+    }
+
+
+    //判断线的个数，过多则返回失败
+    if (lines.size() == 7)
+    {
+        for (int i = 0;i < 7;i++)
+        {
+            realLines.push_back( { borderlines[5].l - 5 + lines[i].l ,1,false } );
+        }
+    }
+    else
+        return false;
+    
+#endif
+
+
+
+    //绘制出各条线
+    ard.drawLines( srcRImg, realLines, dstImg );
+
+    ////创建并绘制水平投影图像
+    //cv::Mat projImg( 255, cannyGImg.cols, CV_8U, cv::Scalar( 255 ) );
+
+    //for (int i = 0; i < cannyGImg.cols; ++i)
+    //{
+    //    cv::line( projImg, cv::Point( i, 128 - avgX[i] ), cv::Point( i, 128 ), cv::Scalar::all( 0 ) );
+    //}
+
+    //Mat tmp, tmp2;
+    //bitwise_not( projImg, tmp );
+    //resize( tmp, tmp2, cannyGImg.size() );
+    //addWeighted( tmp2, 0.3, cannyGImg, 0.7, 0, dstImg );
+
+
+    //realLines.push_back( { borderlines[0].l - 5 + line_l ,2,false } );
+    //realLines.push_back( { borderlines[1].l - 5 + line_r ,2,false } );
+
+    //绘制出来原始裁剪边线
+    dstGImg = cannyGImg.clone();
+    line( dstGImg, Point( 5, 0 ), Point( 5, dstGImg.rows - 1 ), Scalar( 128 ) );
+    line( dstGImg, Point( dstGImg.cols - 6, 0 ), Point( dstGImg.cols - 6, dstGImg.rows - 1 ), Scalar( 128 ) );
+
+
+
+
+    waitKey( 0 );
+
+        
+
+
+
+
+
+#endif
+
+
+
+    finish = clock();
+    totaltime = (double) ( finish - start ) / CLOCKS_PER_SEC;
+    cout << "\n此程序的运行时间为" << totaltime << "秒" << endl;
+
+    getchar();
+    getchar();
 
 
     return 0;

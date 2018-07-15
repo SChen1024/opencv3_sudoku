@@ -156,12 +156,14 @@
     <ClCompile Include="src\areaRDiv.cpp" />
     <ClCompile Include="src\main.cpp" />
     <ClCompile Include="src\scardetector.cpp" />
+    <ClCompile Include="src\WatershedProc.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\areadivider.h" />
     <ClInclude Include="include\areaRDiv.h" />
     <ClInclude Include="include\include.h" />
     <ClInclude Include="include\scardetector.h" />
+    <ClInclude Include="include\WatershedProc.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

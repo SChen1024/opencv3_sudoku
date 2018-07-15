@@ -19,6 +19,18 @@ public:
             bool aut;   //检测出来和自定的划线的标志位
     };
 
+
+    //分区边界线
+    class borderLine
+    {
+        public:
+             int l;
+             int sub;
+
+    };
+
+
+
     class Scar
     {
         //Point center;  //缺陷中心点
@@ -26,6 +38,7 @@ public:
         double width;
         double height;
         double acc = height / width;
+        bool real;
     };
 
 
@@ -50,9 +63,18 @@ public:
     void filterScars(const cv::Mat &, const std::vector<std::vector<cv::Point>> &, std::vector<std::vector<cv::Point>> &, const std::vector<AreaRDiv::Line> &)const;
 
 
+
+    void divideImg( cv::Mat &srcImg, cv::Mat &dstImg, std::vector<double> &borderScales,std::vector<AreaRDiv::Line> &borderlines );
+
+    void RdivideImg( cv::Mat &srcImg, cv::Mat &dstImg, std::vector<double> &RborderScales );
+
+
 };
 
+void cutImage( cv::Mat &srcImg, std::vector<AreaRDiv::Line> &lines,std::vector<cv::Mat> &cellImg );
+void listFiles( const char * dir, std::vector<std::string>& files );
 
+void renameFiles( std::string &filespath, std::string &files_rename, std::string &newpath );
 
 
 

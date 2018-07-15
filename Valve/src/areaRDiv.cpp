@@ -21,17 +21,24 @@ bool AreaRDiv::divide(const cv::Mat &img, const std::vector<double> &scales, std
 
 
 void AreaRDiv::drawLines(const cv::Mat &img, const std::vector<Line> &lines, cv::Mat &imgOut)const
+
+
 {
     cv::Mat img_rgb = img.clone();
     if (img.channels() == 1)
-        cv::cvtColor(img, img_rgb, CV_GRAY2BGR);
+        cv::cvtColor( img, img_rgb, CV_GRAY2BGR );
 
+    //根据acc值进行画不同颜色的线 小于等于1 绿线/   2 蓝线     其他 红线
     for (auto i : lines)
-        if (i.aut)
-            cv::line(img_rgb, cv::Point(i.l, 0), cv::Point(i.l, img_rgb.rows - 1), cv::Scalar(0, 255, 0));
+    {
+        if (i.acc <= 1)
+            cv::line( img_rgb, cv::Point( i.l, 0 ), cv::Point( i.l, img_rgb.rows - 1 ), cv::Scalar( 0, 255, 0 ) );
+        else if (i.acc == 2)
+            cv::line( img_rgb, cv::Point( i.l, 0 ), cv::Point( i.l, img_rgb.rows - 1 ), cv::Scalar( 255, 0, 0 ) );
         else
-            cv::line(img_rgb, cv::Point(i.l, 0), cv::Point(i.l, img_rgb.rows - 1), cv::Scalar(255, 0, 0));
+            cv::line( img_rgb, cv::Point( i.l, 0 ), cv::Point( i.l, img_rgb.rows - 1 ), cv::Scalar( 0, 0, 255 ) );
 
+    }
     imgOut = img_rgb;
 }
 
@@ -247,17 +254,17 @@ void AreaRDiv::filterScars(const cv::Mat &img, const std::vector<std::vector<cv:
 
 
 
-    for (auto it = scars_in.cbegin();it < scars_in.cend();it++)
-    {
+    //for (auto it = scars_in.cbegin();it < scars_in.cend();it++)
+    //{
 
-        
+    //    
 
-        for (auto j = it->cbegin();j < it->cend();j++)
-        {
+    //    for (auto j = it->cbegin();j < it->cend();j++)
+    //    {
 
-        }
+    //    }
 
-    }
+    //}
 
     
 
@@ -268,5 +275,419 @@ void AreaRDiv::filterScars(const cv::Mat &img, const std::vector<std::vector<cv:
 
 
 }
+
+
+//杆面图像区域划分
+void AreaRDiv::divideImg( Mat &srcImg, Mat &dstImg, vector<double> &borderScales, vector<AreaRDiv::Line> &borderlines)
+{
+
+
+
+    Mat grayImg, edgeImg, cannyImg;
+
+
+    cvtColor( srcImg, grayImg, CV_BGR2GRAY );
+
+    blur( grayImg, grayImg, Size( 7, 7 ) );
+
+
+    //grayImg.convertTo( grayImg, CV_16S );
+
+    //Sobel( grayImg, edgeImg, CV_16S, 1,0,5 );
+    //Laplacian( grayImg, edgeImg, CV_32F, 5 );
+
+    //统计列向的平均数，可以分开计算 计算最前面和最后面的头尾 减少大部分运算量
+    vector<double> sumY{};
+
+    //double *sumY = new double[grayImg.cols];
+    for (int i = 0;i < grayImg.cols;++i)
+    {
+        double avg = 0;
+        for (int j = 0;j < grayImg.rows;j++)
+        {
+            //cout << grayImg.at<uchar>( j, i )<<"  "<<i<< endl;
+            avg += (double) grayImg.at<uchar>( j, i ) / grayImg.rows;
+        }
+        sumY.push_back( avg );
+        //sumY[i] = sum;
+    }
+
+
+
+    //计算横向的梯度
+    vector<int> gradX{};
+    gradX.push_back( 0 );
+    for (int i = 1;i < grayImg.cols;i++)
+    {
+        gradX.push_back( (int) 10 * ( sumY[i] - sumY[i - 1] ) );
+
+        //cout << gradX[i] << endl;
+    }
+
+    //遍历得到图像梯度的两个峰值，得到两个边缘的值  左侧选 0-150 右侧选1900-2048
+    int max = 0, max_l = 0;
+    for (int i = 0;i < 150;i++)
+    {
+        if (gradX[i] > max)
+        {
+            max = gradX[i];
+            max_l = i;
+        }
+    }
+    //cout << max << "  " << max_l << endl;
+
+
+    //从第一个峰值开始找到30px 内最小值 低谷
+    int min1 = 100, min1_l = 0;
+    for (int i = max_l;i < max + 300;i++)
+    {
+        if (gradX[i] < min1)
+        {
+            min1 = gradX[i];
+            min1_l = i;
+        }
+    }
+    //cout << min1 << "  " << min1_l << endl;
+
+
+    //逆向找到第一个峰值  E面找低估
+    int min = 128, min_l = 0;
+    for (int i = grayImg.cols - 1;i >grayImg.cols - 121;i--)
+    {
+        if (gradX[i] < min)
+        {
+            min = gradX[i];
+            min_l = i;
+        }
+    }
+    //cout << min << "  " << min_l << endl;
+
+    
+
+    max_l = max_l - 2;
+    //最左侧边线 手动
+    borderlines.push_back( { max_l, 1, false } );
+
+    //最第二条边线 手动
+    borderlines.push_back( { min1_l, 1, false } );
+
+    int maxWidthpx = abs( min_l - max_l );
+
+    //划分区域边线
+    for (int i = 2;i < borderScales.size() - 1;i++)
+    {
+        borderlines.push_back( { max_l + (int) ( borderScales[i] * maxWidthpx ), 1, false } );
+    }
+    //最右侧边线
+    borderlines.push_back( { min_l, 1, false } );
+
+    AreaRDiv ard;
+
+    ard.drawLines( srcImg, borderlines, dstImg );
+
+/*
+    //创建并绘制水平投影图像
+    cv::Mat projImg( 255, grayImg.cols, CV_8U, cv::Scalar( 255 ) );
+
+    for (int i = 0; i < grayImg.cols; ++i)
+    {
+    cv::line( projImg, cv::Point( i, 128 - gradX[i] ), cv::Point( i, 128 ), cv::Scalar::all( 0 ) );
+    }
+
+    Mat tmp, tmp2;
+    bitwise_not( projImg, tmp );
+    resize( tmp, tmp, grayImg.size() );
+    addWeighted( tmp, 0.3, grayImg, 0.7, 0, dstImg );
+
+    //imwrite( "Pic\\R\\Test_grad.png", tmp2 );
+
+
+    
+
+    //edgeImg.convertTo( edgeImg, CV_8U );
+    //threshold( edgeImg, edgeImg, 100, 255, CV_THRESH_OTSU );
+
+
+    //Sobel( grayImg, dstImg, CV_8U, 1, 0, 5 );
+    //Canny( grayImg, cannyImg, 30, 60, 3 );
+
+    vector<Mat> cellImg;
+    cutImage( srcRImg,borderlines, cellImg );
+
+    Mat AreaBImg, AreaD2Img, AreaEImg, AreaFImg, AreaGImg;
+    AreaBImg = cellImg[0];
+    AreaD2Img = cellImg[2];
+    AreaEImg = cellImg[3];
+    AreaFImg = cellImg[4];
+    AreaGImg = cellImg[5];
+
+    */
+}
+
+//弧面区域划分
+void AreaRDiv::RdivideImg( Mat &srcImg, Mat &dstImg, vector<double> &RborderScales )
+{
+
+    //Mat srcImg = imread( RFace0 );
+    //Mat dstImg;
+
+
+    //imshow( "src", srcRImg );
+    Mat grayImg, edgeImg, cannyImg;
+
+
+    cvtColor( srcImg, grayImg, CV_BGR2GRAY );
+
+    blur( grayImg, grayImg, Size( 5, 5 ) );
+
+
+    //统计列向的平均数，
+    vector<double> sumY{};
+    for (int i = 0;i < grayImg.cols;++i)
+    {
+        double sum = 0;
+        for (int j = 0;j < grayImg.rows;j++)
+        {
+            sum += (double) grayImg.at<uchar>( j, i ) / grayImg.rows;
+        }
+        sumY.push_back( sum );
+    }
+
+    //计算横向的梯度
+    vector<int> gradX{};
+    gradX.push_back( 0 );
+    for (int i = 1;i < grayImg.cols;i++)
+    {
+        gradX.push_back( (int) 10 * ( sumY[i] - sumY[i - 1] ) );
+        //cout << gradX[i] << endl;
+    }
+
+    //遍历得到图像梯度的两个峰值，得到两个边缘的值  左侧选 0-180 右侧选倒数250
+    int max = 0, max_l = 0;  //最左侧边缘，最第二条边缘
+    for (int i = 0;i < 180;i++)
+    {
+        if (gradX[i] > max)
+        {
+            max = gradX[i];
+            max_l = i;
+        }
+
+
+    }
+    //cout << max << "  " << max_l << endl;
+    //从第一个峰值开始找到100px 内最小值 低谷
+    int min = 100, min_l = 0;
+    for (int i = max_l;i < max + 100;i++)
+    {
+        if (gradX[i] < min)
+        {
+            min = gradX[i];
+            min_l = i;
+        }
+    }
+    //cout << min << "  " << min_l << endl;
+
+    //逆向找到第一个峰值  R 面处是找到峰值
+    int max2 = 0, max2_l = 0;
+    for (int i = grayImg.cols - 1;i >grayImg.cols - 251;i--)
+    {
+        //再次找到一个峰值
+        if (gradX[i] > max2)
+        {
+            max2 = gradX[i];
+            max2_l = i;
+        }
+    }
+    //cout << max2 << "  " << max2_l << endl;
+
+    vector<AreaRDiv::Line> Rborderlines;
+
+    //最左侧边线 手动左移动2px  右侧右移1px
+    max_l -= 0;
+    max2_l += 0;
+
+    Rborderlines.push_back( { max_l, 1, false } );
+    Rborderlines.push_back( { min_l, 1, false } );
+
+    int maxWidthpx = abs( max2_l - max_l );
+
+    //划分区域边线
+    for (int i = 2;i < RborderScales.size() - 1;i++)
+    {
+        Rborderlines.push_back( { max_l + (int) ( RborderScales[i] * maxWidthpx ), 1, false } );
+    }
+    //最右侧边线
+    Rborderlines.push_back( { max2_l, 1, false } );
+
+    //AreaRDiv ard;
+
+    //ard.drawLines( srcImg, Rborderlines, dstImg );
+
+
+    //创建并绘制水平投影图像
+    cv::Mat projImg( 255, grayImg.cols, CV_8U, cv::Scalar( 255 ) );
+
+    for (int i = 0; i < grayImg.cols; ++i)
+    {
+        cv::line( projImg, cv::Point( i, 128 - gradX[i] ), cv::Point( i, 128 ), cv::Scalar::all( 0 ) );
+    }
+
+    Mat tmp, tmp2;
+    bitwise_not( projImg, tmp );
+    resize( tmp, tmp, grayImg.size() );
+    addWeighted( tmp, 0.3, grayImg, 0.7, 0, dstImg );
+    //imwrite( "Pic\\R\\Test_grad.png", tmp2 );
+
+
+
+    //edgeImg.convertTo( edgeImg, CV_8U );
+    //threshold( edgeImg, edgeImg, 100, 255, CV_THRESH_OTSU );
+
+
+    //Sobel( grayImg, dstImg, CV_8U, 1, 0, 5 );
+    //Canny( grayImg, cannyImg, 30, 60, 3 );
+
+    AreaRDiv ard;
+    ard.drawLines( srcImg, Rborderlines, dstImg );
+
+    //vector<Mat> cellImg;
+    //cutImage( srcImg,Rborderlines, cellImg );
+
+    //Mat AreaCImg, AreaD1Img, AreaD0Img, AreaD2Img;
+    //AreaCImg = cellImg[0];
+    //AreaD1Img = cellImg[1];
+    //AreaD0Img = cellImg[2];
+    //AreaD2Img = cellImg[3];
+
+}
+
+
+
+
+
+
+
+
+
+//目录中的所有图片(到每一级目录)
+void listFiles(const char * dir, vector<string>& files)
+{
+    char dirNew[200];
+    strcpy(dirNew, dir);
+    strcat(dirNew, "\\*.*");    // 在目录后面加上"\\*.*"进行第一次搜索
+    intptr_t handle;
+    _finddata_t findData;
+    handle = _findfirst(dirNew, &findData);
+    if (handle == -1)        // 检查是否成功
+        return;
+    do
+    {
+        if (findData.attrib & _A_SUBDIR)
+        {
+            if (strcmp(findData.name, ".") == 0 || strcmp(findData.name, "..") == 0)
+                continue;
+            //cout << findData.name << "\t<dir>\n";
+            // 在目录后面加上"\\"和搜索到的目录名进行下一次搜索
+            strcpy(dirNew, dir);
+            strcat(dirNew, "\\");
+            strcat(dirNew, findData.name);
+            listFiles(dirNew, files);
+        }
+        else
+            files.push_back(string(dir).append("\\").append(findData.name));
+        //cout << findData.name << "\t" << findData.size << " bytes.\n";
+    } while (_findnext(handle, &findData) == 0);
+    _findclose(handle);    // 关闭搜索句柄
+}
+
+
+void renameFiles( string &filespath, string &newname,string &newpath  )
+{
+
+
+    //定位出来文件名
+    int pos = filespath.find_last_of( '\\' );
+    int pos_ = filespath.find( '.' );
+    string path( filespath.substr( 0, pos + 1 ) );   // 路径
+    string name( filespath.substr( pos + 1, pos_- pos-1 ) ); //文件名
+    string exte( filespath.substr( pos_+1, 3 ) ); //拓展名
+
+    string suffix = "png";
+
+    //设定文件名格式
+    newname = newpath+"\\" +"res_" + name +"."+ suffix;
+
+   // files_rename = 
+
+
+
+    ////字符型路径分割
+    //char drive[_MAX_DRIVE];
+    //char dir[_MAX_DIR];
+    //char fname[_MAX_FNAME];
+    //char ext[_MAX_EXT];
+    //_splitpath( filespath, drive, dir, fname, ext );
+
+
+}
+
+
+
+
+
+//将图像划分成为五个单元
+void cutImage( cv::Mat &srcImg, std::vector<AreaRDiv::Line> &lines, std::vector<cv::Mat> &cellImg )
+{
+    int height = srcImg.rows;
+
+
+    ////设置ROI总会在第五个区域失效无法进行下一步
+    //for (int i = 0;i < lines.size()-1;i++)
+    //{
+
+    //    Mat roi_img(srcImg, Rect( lines[i].l - 5, 0, lines[i+1].l- lines[i].l + 10, height ) );
+
+    //    cellImg.push_back( roi_img );
+    //}
+
+    Mat roi_img;
+
+    for (int i = 0;i < lines.size()-3;i++)
+    {
+
+        Rect rect( lines[i].l - 5, 0, lines[i + 1].l - lines[i].l + 10, height );
+        //在第四个总是出问题  
+        //应该是roi区域变小导致无法处理
+        srcImg( rect ).copyTo( roi_img );
+        cellImg.push_back( roi_img );
+        //imshow( "roi_img", roi_img );
+
+    }
+
+    
+
+    // 强制将数据推出， 解决之前的bug
+    Mat roi_img4;
+    Rect rect4( lines[4].l - 5, 0, lines[5].l - lines[4].l + 10, height );
+    //在第四个总是出问题
+    srcImg( rect4 ).copyTo( roi_img4 );
+    cellImg.push_back( roi_img4 );
+
+    Mat roi_img5;
+    Rect rect5( lines[5].l - 5, 0, lines[6].l - lines[5].l + 10, height );
+    //在第四个总是出问题
+    srcImg( rect5 ).copyTo( roi_img5 );
+    cellImg.push_back( roi_img5 );
+
+
+
+
+
+
+
+}
+
+
+
 
 

@@ -21,19 +21,20 @@ bool AreaDivider::divide(const cv::Mat &img, const std::vector<double> &scales, 
 
 
 //分割线区域画成绿色的线，非分割区画成蓝色的线
-void AreaDivider::drawLines(const cv::Mat &img, const std::vector<Line> &lines, cv::Mat &imgOut)const
+void AreaDivider::drawLines( const cv::Mat &img, const std::vector<Line> &lines, cv::Mat &imgOut )const
+
 {
-	cv::Mat img_rgb = img.clone();
-	if (img.channels() == 1)
-		cv::cvtColor(img, img_rgb, CV_GRAY2BGR);
+    cv::Mat img_rgb = img.clone();
+    if (img.channels() == 1)
+        cv::cvtColor( img, img_rgb, CV_GRAY2BGR );
 
-	for (auto i : lines)
-		if (i.aut)
-			cv::line(img_rgb, cv::Point(i.l, 0), cv::Point(i.l, img_rgb.rows - 1), cv::Scalar(0, 255, 0));
-		else
-			cv::line(img_rgb, cv::Point(i.l, 0), cv::Point(i.l, img_rgb.rows - 1), cv::Scalar(255, 0, 0));
+    for (auto i : lines)
+        if (i.aut)
+            cv::line( img_rgb, cv::Point( i.l, 0 ), cv::Point( i.l, img_rgb.rows - 1 ), cv::Scalar( 0, 255, 0 ) );
+        else
+            cv::line( img_rgb, cv::Point( i.l, 0 ), cv::Point( i.l, img_rgb.rows - 1 ), cv::Scalar( 255, 0, 0 ) );
 
-	imgOut = img_rgb;
+    imgOut = img_rgb;
 }
 
 //将图像进行一次缩放之后检测边缘 再进行线的查找
@@ -171,3 +172,7 @@ bool AreaDivider::filterLines(const std::vector<Line> &lines_in, std::vector<Lin
 
 	return true;
 }
+
+
+
+
