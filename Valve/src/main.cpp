@@ -311,8 +311,10 @@ int  main(void)
 
 #define AREAB   0    //B
 #define AREAD2  0    //D2
-#define AREAE   1    // E
-#define AREAG   0    //G
+#define AREAE   0    // E
+#define AREAF   0    //F 
+
+#define AREAG   1    //G
 
 
     
@@ -393,22 +395,86 @@ int  main(void)
 #if AREAD2
     //==============================================================
     //D2区域处理开始
-    Mat AreaD2Img = cellImg[2];
+    //Mat AreaD2Img = cellImg[4];
+    Mat AreaD2Img = imread( "Pic\\E\\area\\D2\\D2.png" );
     Mat grayD2Img, edgeD2Img, cannyD2Img, dstD2Img;
 
-    //cvtColor( AreaD2Img, grayD2Img, CV_BGR2GRAY );
-    //threshold( grayD2Img, edgeD2Img, 0, 255, CV_THRESH_OTSU );
-    //Canny( edgeD2Img, cannyD2Img, 30, 80, 3 );
+    cv::cvtColor( AreaD2Img, grayD2Img, CV_BGR2GRAY );
+    cv::blur( grayD2Img, grayD2Img, Size( 7, 7 ) );
+
+    //cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 7, 7 ) );
+    //cv::morphologyEx( grayD2Img, grayD2Img, cv::MORPH_CLOSE, element );
+
+    // 局部二值化
 
 
-    WaterShedProc ws;
-    Mat markers;
-    ws.process( AreaD2Img, markers );
+    cv::adaptiveThreshold( grayD2Img, edgeD2Img, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY_INV, 55, 20 );
 
-    dstImg = AreaD2Img.clone();
-    ws.drawMarkersLine( dstImg, markers );
+    //threshold( grayD2Img, edgeD2Img, 96, 255, CV_THRESH_OTSU );  //直接找到结果？
+
+    Mat kernel = getStructuringElement( MORPH_RECT, Size( 3, 3 ) );
+    cv::morphologyEx( edgeD2Img, edgeD2Img, MORPH_OPEN, kernel );
+    cv::morphologyEx( edgeD2Img, edgeD2Img, MORPH_CLOSE, kernel );
 
 
+    std::vector<std::vector<Point>> contours;
+    std::vector<Vec4i> hierarchy;
+
+    cv::findContours( edgeD2Img, contours, hierarchy, CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE, Point( 0, 0 ) );
+
+    Mat contoursImg = AreaD2Img.clone();
+    //判断得到的轮廓值是否有效
+    std::vector<std::vector<Point>> contours_filtered;
+    if (contours.size() != 0)
+    {
+        // 计算所有轮廓的面积和长度
+        vector<Rect> box( contours.size() );
+        for (auto i = 0; i <contours.size(); ++i)
+        {
+            double contour_area = cv::contourArea( contours[i] );
+            //计算外框矩形
+            box[i] = boundingRect( Mat( contours[i] ) );
+
+            //drawContours( contoursImg, contours, i, Scalar( 0, 0, 255 ), 1, 8, hierarchy );
+            //rectangle( contoursImg, box[i], Scalar( 0, 128, 0 ), 1 );
+            //double contour_length = cv::arcLength( *i, false );
+
+            float acc = (float) box[i].height / box[i].width;
+
+            float boxCenterX = ( box[i].tl().x + box[i].br().x ) / 2;
+            //Point boxCenter = Point( ( box[i].tl.x + box[i].br.x ) / 2, ( box[i].tl.y + box[i].br.y ) / 2 );
+
+
+            //选出面积小于10的且中心距离左边缘超过30px的
+            if (( contour_area >= 10 && boxCenterX > 30 ))
+                contours_filtered.push_back( contours[i] );
+
+            //cout << contour_area << "    " << contour_length << endl;
+        }
+    }
+
+
+    //最终结论
+    if (contours_filtered.size() != 0)
+    {
+        cout << "D2区伤痕数量为：" << contours_filtered.size() << endl;
+
+        // 计算所有轮廓的面积和长度
+        vector<Rect> box( contours_filtered.size() );
+        for (int i = 0; i <contours_filtered.size(); ++i)
+        {
+            //计算外框矩形
+            box[i] = boundingRect( Mat( contours_filtered[i] ) );
+            box[i] = Rect( Point( box[i].tl().x - 5, box[i].tl().y - 5 ), Point( box[i].br().x + 5, box[i].br().y + 5 ) );
+
+            rectangle( contoursImg, box[i], Scalar( 0, 0, 255 ), 1 );
+
+        }
+        imwrite( "Pic\\E\\area\\D2\\res_d2.png", contoursImg );
+    }
+
+    else
+        cout << "D2区没有伤痕!" << endl;
 
     //DE 分界线
     realLines.push_back( { borderlines[3].l  ,2,false } );
@@ -420,11 +486,96 @@ int  main(void)
     //==============================================================
     //E区域处理开始
     //Mat AreaEImg = cellImg[3];
-    Mat AreaEImg = imread( "Pic\\E\\area\\E\\E3.png" );
+    Mat AreaEImg = imread( "Pic\\E\\area\\E\\E.png" );
     Mat grayEImg, edgeEImg, cannyEImg, dstEImg;
 
     cvtColor( AreaEImg, grayEImg, CV_BGR2GRAY );
-    threshold( grayEImg, edgeEImg, 128, 255, CV_THRESH_BINARY_INV );  //直接找到结果？ 
+    blur( grayEImg, grayEImg, Size( 5, 5 ) );
+
+    //cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 7, 7 ) );
+    //cv::morphologyEx( grayEImg, grayEImg, cv::MORPH_CLOSE, element );
+    //threshold( grayEImg, edgeEImg, 128, 255, CV_THRESH_BINARY_INV );  //直接找到结果？
+    adaptiveThreshold( grayEImg, edgeEImg, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY_INV, 25, 15 );
+
+    Mat kernel= getStructuringElement( MORPH_RECT, Size( 3, 3 ) );
+    morphologyEx( edgeEImg, edgeEImg, MORPH_OPEN, kernel );
+    morphologyEx( edgeEImg, edgeEImg, MORPH_CLOSE, kernel );
+    morphologyEx( edgeEImg, edgeEImg, MORPH_CLOSE, kernel );
+
+
+    //erode( edgeEImg, edgeEImg, kernel );
+    //dilate( edgeEImg, edgeEImg, kernel );
+
+   // Canny( grayEImg, cannyEImg, 96, 160, 3 );
+
+   // Mat labelImg;
+    //connectedComponents( edgeEImg, labelImg );
+
+
+    std::vector<std::vector<Point>> contours;
+    std::vector<Vec4i> hierarchy;
+
+    findContours( edgeEImg, contours, hierarchy, CV_RETR_TREE, CV_CHAIN_APPROX_NONE, Point( 0, 0 ) );
+
+    Mat contoursImg = AreaEImg.clone();
+    //判断得到的轮廓值是否有效
+    std::vector<std::vector<Point>> contours_filtered;
+    if (contours.size() != 0)
+    {
+        // 计算所有轮廓的面积和长度
+        vector<Rect> box( contours.size() );
+        for (auto i =0; i <contours.size(); ++i)
+        {
+            double contour_area = cv::contourArea( contours[i] );
+            //计算外框矩形
+            box[i] = boundingRect( Mat( contours[i] ) );
+
+            //drawContours( contoursImg, contours, i, Scalar( 0,0,255 ), 1, 8, hierarchy );
+
+            //rectangle( contoursImg, box[i], Scalar(0,128,0), 1 );
+            //double contour_length = cv::arcLength( *i, false );
+
+            //float acc = (float) box[i].height / box[i].width;
+
+            float boxCenterX = ( box[i].tl().x + box[i].br().x ) / 2;
+            //Point boxCenter = Point( ( box[i].tl.x + box[i].br.x ) / 2, ( box[i].tl.y + box[i].br.y ) / 2 );
+
+            //选出面积小于10的且中心距离左边缘超过30px的
+            if (contour_area >= 10&&( boxCenterX >30))
+                contours_filtered.push_back( contours[i] );
+
+            //cout << contour_area << "    " << contour_length << endl;
+        }
+    }
+
+
+
+    //最终结论
+    if (contours_filtered.size() != 0)
+    {
+        cout << "E区伤痕数量为：" << contours_filtered.size() << endl;
+
+        // 计算所有轮廓的面积和长度
+        vector<Rect> box( contours_filtered.size() );
+        for (int i = 0; i <contours_filtered.size(); ++i)
+        {
+            //计算外框矩形
+            box[i] = boundingRect( Mat( contours_filtered[i] ) );
+            box[i] = Rect( Point( box[i].tl().x - 5, box[i].tl().y - 5 ), Point( box[i].br().x + 5, box[i].br().y + 5 ) );
+
+            rectangle( contoursImg, box[i], Scalar( 0, 0, 255 ), 1 );
+
+        }
+        imwrite( "Pic\\E\\area\\E\\res_E.png", contoursImg );
+
+    }
+    else
+        cout << "E区没有伤痕!" << endl;
+
+
+    //Mat labelImg;
+   // Two_PassNew( edgeEImg, labelImg );
+
 
     //Sobel( grayEImg, edgeEImg, CV_8U, 0, 1, 5 );
     //Canny( edgeEImg, cannyEImg, 30, 80, 3 );
@@ -435,6 +586,97 @@ int  main(void)
     //E区域结束
     //=================================================================
 #endif // AREAE
+
+
+#if AREAF
+    //Mat AreaFImg = cellImg[4];
+    Mat AreaFImg = imread( "Pic\\E\\area\\F\\F.png" );
+    Mat grayFImg, edgeFImg, cannyFImg, dstFImg;
+
+    cv::cvtColor( AreaFImg, grayFImg, CV_BGR2GRAY );
+    cv::blur( grayFImg, grayFImg, Size( 5, 5 ) );
+
+    //cv::Mat element = cv::getStructuringElement( cv::MORPH_RECT, cv::Size( 7, 7 ) );
+    //cv::morphologyEx( grayFImg, grayFImg, cv::MORPH_CLOSE, element );
+
+    // 局部二值化
+
+
+    cv::adaptiveThreshold( grayFImg, edgeFImg, 255, CV_ADAPTIVE_THRESH_MEAN_C, CV_THRESH_BINARY_INV, 35, 12 );
+
+    //threshold( grayFImg, edgeFImg, 96, 255, CV_THRESH_OTSU );  //直接找到结果？
+
+    Mat kernel = getStructuringElement( MORPH_RECT, Size( 3, 3 ) );
+    cv::morphologyEx( edgeFImg, edgeFImg, MORPH_OPEN, kernel );
+    cv::morphologyEx( edgeFImg, edgeFImg, MORPH_CLOSE, kernel );
+
+
+    std::vector<std::vector<Point>> contours;
+    std::vector<Vec4i> hierarchy;
+
+    cv::findContours( edgeFImg, contours, hierarchy,CV_RETR_EXTERNAL, CV_CHAIN_APPROX_NONE, Point( 0, 0 ) );
+
+    Mat contoursImg = AreaFImg.clone();
+    //判断得到的轮廓值是否有效
+    std::vector<std::vector<Point>> contours_filtered;
+    if (contours.size() != 0)
+    {
+        // 计算所有轮廓的面积和长度
+        vector<Rect> box( contours.size() );
+        for (auto i = 0; i <contours.size(); ++i)
+        {
+            double contour_area = cv::contourArea( contours[i] );
+            //计算外框矩形
+            box[i] = boundingRect( Mat( contours[i] ) );
+
+            //drawContours( contoursImg, contours, i, Scalar( 0, 0, 255 ), 1, 8, hierarchy );
+
+            //rectangle( contoursImg, box[i], Scalar( 0, 128, 0 ), 1 );
+            //double contour_length = cv::arcLength( *i, false );
+
+            float acc = (float) box[i].height / box[i].width;
+
+            float boxCenterX = ( box[i].tl().x + box[i].br().x ) / 2;
+            //Point boxCenter = Point( ( box[i].tl.x + box[i].br.x ) / 2, ( box[i].tl.y + box[i].br.y ) / 2 );
+
+
+            //选出面积小于10的且中心距离左边缘超过30px的
+            if (contour_area >= 15 )
+                contours_filtered.push_back( contours[i] );
+
+            //cout << contour_area << "    " << contour_length << endl;
+        }
+    }
+
+
+    //最终结论
+    if (contours_filtered.size() != 0)
+    {
+        cout << "F区伤痕数量为：" << contours_filtered.size() << endl;
+
+        // 计算所有轮廓的面积和长度
+        vector<Rect> box( contours_filtered.size() );
+        for (int i = 0; i <contours_filtered.size(); ++i)
+        {
+            //计算外框矩形
+            box[i] = boundingRect( Mat( contours_filtered[i] ) );
+            box[i] = Rect( Point( box[i].tl().x - 5, box[i].tl().y - 5 ), Point( box[i].br().x + 5, box[i].br().y + 5 ) );
+
+            rectangle( contoursImg, box[i], Scalar( 0, 0, 255 ), 1 );
+
+        }
+        imwrite( "Pic\\E\\area\\F\\res_f.png",contoursImg );
+
+    }
+
+    else
+        cout << "F区没有伤痕!" << endl;
+
+
+
+
+#endif // AREAF
+
 
 
 
@@ -454,11 +696,20 @@ int  main(void)
     //---- G 区域处理方案------------------------------------------
 
 
-    Mat AreaGImg = cellImg[5];
+    //Mat AreaGImg = cellImg[5];
+    Mat AreaGImg = imread( "Pic\\E\\area\\G\\G3.png" );
     Mat grayGImg, edgeGImg, cannyGImg, dstGImg;
 
     cvtColor( AreaGImg, grayGImg, CV_BGR2GRAY );
+
+    cv::blur( grayGImg, grayGImg, Size( 5, 5 ) );
+
     threshold( grayGImg, edgeGImg, 0, 255, CV_THRESH_OTSU );
+
+    Mat kernel = getStructuringElement( MORPH_CROSS, Size( 3, 3 ) );
+   
+    cv::morphologyEx( edgeGImg, edgeGImg, MORPH_CLOSE, kernel );
+
     Canny( edgeGImg, cannyGImg, 30, 100, 3 );
 
     ////对得到的两条轮廓统计横座标值，确定轮廓位置
@@ -509,9 +760,14 @@ int  main(void)
             lines.push_back( { i,c / double( cannyGImg.rows ),true } );
     }
 
-    if (lines.size() < 7) return false;
-
-    for (int i = 0; i < lines.size() - 1; )
+    //line 至少7条线 如果少了 报错
+    if (lines.size() < 7)
+    {
+        cout << "G区无法读取到7条边缘， 请检查图片！" << endl;
+        return false;
+    }
+    //对于对于相邻的两条线进行取大值处理
+    for (int i = 0; i < lines.size()-1; )
     {
         if (fabs( lines[i].l - lines[i + 1].l ) < 5)
         {
@@ -524,17 +780,50 @@ int  main(void)
             ++i;
     }
 
+    std::vector<AreaRDiv::Line> lines_filter;
+    //判断lines的范围 根据范围确定7条线
+    for (int i = 0; i < lines.size(); i++)
+    {
+        int l = lines[i].l;
+        
+        //在槽的范围内的线 不做考虑
+        //准确定位线的位置之后，定位都很精确
+        if (( l > 103 && l < 117 )
+            || ( l > 140 && l < 153 )
+            || ( l > 177 && l < 189 ))
+            continue;
+        else
+            lines_filter.push_back( lines[i] );
+    }
+
+
+
+    ////绘出最终的线
+    //for (int i = 0; i < lines_filter.size();i++ )
+    //{
+    //    line( cannyGImg, Point( lines_filter[i].l, 0 ), Point( lines_filter[i].l, cannyGImg.rows - 1 ), Scalar( 128 ) );
+    //}
+
 
     //判断线的个数，过多则返回失败
-    if (lines.size() == 7)
+    if (lines_filter.size() == 7)
     {
         for (int i = 0;i < 7;i++)
         {
-            realLines.push_back( { borderlines[5].l - 5 + lines[i].l ,1,false } );
+            realLines.push_back( { borderlines[5].l - 5 + lines_filter[i].l ,1,false } );
         }
     }
     else
-        return false;
+       cout<<"G区检测到的线过多, 请检查"<<endl;
+
+    
+    //在开始的地方插入一个量
+    lines_filter.insert( lines_filter.begin(), { 5,1,false } );
+
+    vector<Mat> GcellImg;
+    cutImage( AreaGImg, lines_filter, GcellImg );
+
+
     
 #endif
 

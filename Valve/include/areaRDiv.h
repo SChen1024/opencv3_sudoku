@@ -75,6 +75,7 @@ void cutImage( cv::Mat &srcImg, std::vector<AreaRDiv::Line> &lines,std::vector<c
 void listFiles( const char * dir, std::vector<std::string>& files );
 
 void renameFiles( std::string &filespath, std::string &files_rename, std::string &newpath );
+void  Two_PassNew( const cv::Mat &bwImg, cv::Mat &labImg );
 
 
 
