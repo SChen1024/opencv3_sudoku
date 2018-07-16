@@ -310,8 +310,10 @@ int  main(void)
 #if TEST
 
 #define AREAB   0    //B
-#define AREAD2  1    //D2
+#define AREAD2  0    //D2
+#define AREAE   1    // E
 #define AREAG   0    //G
+
 
     
     Mat srcRImg = imread( EFace0 );
@@ -378,6 +380,9 @@ int  main(void)
     realLines.push_back( { borderlines[0].l - 5 + line_l ,1,false } );
     realLines.push_back( { borderlines[0].l - 5 + line_r ,1,false } );
 
+    //D区分界线
+    realLines.push_back( { borderlines[2].l  ,3,false } );
+
     // B区处理结束
     //------------------------------------------------------------
 #endif
@@ -388,24 +393,50 @@ int  main(void)
 #if AREAD2
     //==============================================================
     //D2区域处理开始
-    Mat AreaD2Img = cellImg[0];
+    Mat AreaD2Img = cellImg[2];
     Mat grayD2Img, edgeD2Img, cannyD2Img, dstD2Img;
 
-    cvtColor( AreaD2Img, grayD2Img, CV_BGR2GRAY );
-    threshold( grayD2Img, edgeD2Img, 0, 255, CV_THRESH_OTSU );
-    Canny( edgeD2Img, cannyD2Img, 30, 80, 3 );
+    //cvtColor( AreaD2Img, grayD2Img, CV_BGR2GRAY );
+    //threshold( grayD2Img, edgeD2Img, 0, 255, CV_THRESH_OTSU );
+    //Canny( edgeD2Img, cannyD2Img, 30, 80, 3 );
 
 
-    //D2区域结束
-    //=================================================================
-    //D区分界线
-    realLines.push_back( { borderlines[2].l  ,3,false } );
+    WaterShedProc ws;
+    Mat markers;
+    ws.process( AreaD2Img, markers );
+
+    dstImg = AreaD2Img.clone();
+    ws.drawMarkersLine( dstImg, markers );
+
+
 
     //DE 分界线
     realLines.push_back( { borderlines[3].l  ,2,false } );
+    //D2区域结束
+    //=================================================================
+#endif
+
+#if AREAE
+    //==============================================================
+    //E区域处理开始
+    //Mat AreaEImg = cellImg[3];
+    Mat AreaEImg = imread( "Pic\\E\\area\\E\\E3.png" );
+    Mat grayEImg, edgeEImg, cannyEImg, dstEImg;
+
+    cvtColor( AreaEImg, grayEImg, CV_BGR2GRAY );
+    threshold( grayEImg, edgeEImg, 128, 255, CV_THRESH_BINARY_INV );  //直接找到结果？ 
+
+    //Sobel( grayEImg, edgeEImg, CV_8U, 0, 1, 5 );
+    //Canny( edgeEImg, cannyEImg, 30, 80, 3 );
+
 
     //EF 分界线
     realLines.push_back( { borderlines[4].l  ,2,false } );
+    //E区域结束
+    //=================================================================
+#endif // AREAE
+
+
 
     //FG 分界线
     realLines.push_back( { borderlines[5].l  ,2,false } );
@@ -417,7 +448,7 @@ int  main(void)
     //line( dstBImg, Point( dstBImg.cols-6, 0 ), Point( dstBImg.cols - 6, dstBImg.rows - 1 ), Scalar( 128 ) );
  
 
-#endif 
+ 
 
 #if AREAG
     //---- G 区域处理方案------------------------------------------
@@ -529,10 +560,10 @@ int  main(void)
     //realLines.push_back( { borderlines[0].l - 5 + line_l ,2,false } );
     //realLines.push_back( { borderlines[1].l - 5 + line_r ,2,false } );
 
-    //绘制出来原始裁剪边线
-    dstGImg = cannyGImg.clone();
-    line( dstGImg, Point( 5, 0 ), Point( 5, dstGImg.rows - 1 ), Scalar( 128 ) );
-    line( dstGImg, Point( dstGImg.cols - 6, 0 ), Point( dstGImg.cols - 6, dstGImg.rows - 1 ), Scalar( 128 ) );
+    ////绘制出来原始裁剪边线
+    //dstGImg = cannyGImg.clone();
+    //line( dstGImg, Point( 5, 0 ), Point( 5, dstGImg.rows - 1 ), Scalar( 128 ) );
+    //line( dstGImg, Point( dstGImg.cols - 6, 0 ), Point( dstGImg.cols - 6, dstGImg.rows - 1 ), Scalar( 128 ) );
 
 
 

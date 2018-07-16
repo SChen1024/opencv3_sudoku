@@ -297,8 +297,7 @@ void AreaRDiv::divideImg( Mat &srcImg, Mat &dstImg, vector<double> &borderScales
     //Laplacian( grayImg, edgeImg, CV_32F, 5 );
 
     //统计列向的平均数，可以分开计算 计算最前面和最后面的头尾 减少大部分运算量
-    vector<double> sumY{};
-
+    vector<int> sumY{};
     //double *sumY = new double[grayImg.cols];
     for (int i = 0;i < grayImg.cols;++i)
     {
@@ -308,7 +307,7 @@ void AreaRDiv::divideImg( Mat &srcImg, Mat &dstImg, vector<double> &borderScales
             //cout << grayImg.at<uchar>( j, i )<<"  "<<i<< endl;
             avg += (double) grayImg.at<uchar>( j, i ) / grayImg.rows;
         }
-        sumY.push_back( avg );
+        sumY.push_back( (int)avg );
         //sumY[i] = sum;
     }
 
@@ -319,7 +318,7 @@ void AreaRDiv::divideImg( Mat &srcImg, Mat &dstImg, vector<double> &borderScales
     gradX.push_back( 0 );
     for (int i = 1;i < grayImg.cols;i++)
     {
-        gradX.push_back( (int) 10 * ( sumY[i] - sumY[i - 1] ) );
+        gradX.push_back( 10 * ( sumY[i] - sumY[i - 1] ) );
 
         //cout << gradX[i] << endl;
     }
@@ -383,7 +382,7 @@ void AreaRDiv::divideImg( Mat &srcImg, Mat &dstImg, vector<double> &borderScales
 
     AreaRDiv ard;
 
-    ard.drawLines( srcImg, borderlines, dstImg );
+    //ard.drawLines( srcImg, borderlines, dstImg );
 
 /*
     //创建并绘制水平投影图像
