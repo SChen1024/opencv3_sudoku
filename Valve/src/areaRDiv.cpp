@@ -679,14 +679,24 @@ void cutImage( cv::Mat &srcImg, std::vector<AreaRDiv::Line> &lines, std::vector<
     cellImg.push_back( roi_img5 );
 
 
-
-
-
-
-
 }
 
 
+//将G区图像单独划分
+void GcutImage( cv::Mat &srcImg, std::vector<AreaRDiv::Line> &lines, std::vector<cv::Mat> &cellImg )
+{
+    int height = srcImg.rows;
+
+    //设置ROI总会在第五个区域失效无法进行下一步
+    for (int i = 0;i < lines.size()-1;i++)
+    {
+
+        Mat roi_img(srcImg, Rect( lines[i].l - 5, 0, lines[i+1].l- lines[i].l + 10, height ) );
+
+        cellImg.push_back( roi_img );
+    }
+
+}
 
 
 

@@ -72,6 +72,10 @@ public:
 };
 
 void cutImage( cv::Mat &srcImg, std::vector<AreaRDiv::Line> &lines,std::vector<cv::Mat> &cellImg );
+
+//将G区图像单独划分
+void GcutImage( cv::Mat &srcImg, std::vector<AreaRDiv::Line> &lines, std::vector<cv::Mat> &cellImg );
+
 void listFiles( const char * dir, std::vector<std::string>& files );
 
 void renameFiles( std::string &filespath, std::string &files_rename, std::string &newpath );
